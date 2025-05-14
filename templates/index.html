@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Video Viewer</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <button id="nextBtn">▶️ Next Video</button>
+            <div id="countdownWrapper" title="Click to stop auto-play">
+                <div id="countdownBar"></div>
+            </div>
+        </div>
+        <div class="video-wrapper">
+            <video id="player" controls autoplay></video>
+        </div>
+        <a id="video-title" target="_blank"></a>
+    </div>
+
+    <script>
+        let videos = [];
+        let current = 0;
+        let countdownTimer = null;
+        let cancelAutoPlay = false;
+
+        const player = document.getElementById('player');
+        const nextBtn = document.getElementById('nextBtn');
+        const countdownWrapper = document.getElementById('countdownWrapper');
+        const countdownBar = document.getElementById('countdownBar');
+        const title = document.getElementById('video-title');
+
+
+
+
+        function markAsSeen(filename, callback) {
+            fetch('/seen', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ filename })
+            }).then(() => callback());
+        }
+
+        function startCountdown(callback) {
+            cancelAutoPlay = false;
+            countdownWrapper.style.display = 'block';
+            countdownBar.style.transform = 'scaleX(1)';
+
+            let width = 100;
+            countdownTimer = setInterval(() => {
+                if (cancelAutoPlay) {
+                    clearInterval(countdownTimer);
+                    countdownWrapper.style.display = 'none';
+                    return;
+                }
+
+                width -= 3.33;
+                countdownBar.style.transform = `scaleX(${width / 100})`;
+
+                if (width <= 0) {
+                    clearInterval(countdownTimer);
+                    countdownWrapper.style.display = 'none';
+                    callback();
+                }
+            }, 100);
+        }
+
+        function playNext() {
+            if (current >= videos.length) {
+                player.outerHTML = "<h2>All videos watched!</h2>";
+                countdownWrapper.style.display = 'none';
+                nextBtn.style.display = 'none';
+                return;
+            }
+
+            const video = videos[current].video;
+            title.innerText = videos[current].title;
+            title.setAttribute("href", videos[current].url);
+            player.src = `/videos/${video}`;
+            player.load();
+            player.play();
+
+            player.onended = () => {
+                markAsSeen(video, () => {
+                    startCountdown(() => {
+                        current++;
+                        playNext();
+                    });
+                });
+            };
+
+            nextBtn.onclick = () => {
+                markAsSeen(video, () => {
+                    clearInterval(countdownTimer);
+                    countdownWrapper.style.display = 'none';
+                    current++;
+                    playNext();
+                });
+            };
+
+        }
+
+        document.addEventListener('keydown', function (event) { if (event.key === 'ArrowRight') nextBtn.onclick() });
+
+        countdownWrapper.onclick = () => {
+            cancelAutoPlay = true;
+        };
+
+        fetch('/api/videos')
+            .then(res => res.json())
+            .then(data => {
+                videos = data;
+                if (videos.length > 0) {
+                    playNext();
+                } else {
+                    player.outerHTML = "<h2>No unseen videos!</h2>";
+                    countdownWrapper.style.display = 'none';
+                    nextBtn.style.display = 'none';
+                    title.style.display = 'none';
+                }
+            });
+    </script>
+</body>
+
+</html>
