@@ -54,7 +54,7 @@ Before running the web server, you need to fill your local library with memes.
 python3 downloader.py
 ```
 This will create a database (`download/videos.db`) and download some videos from `r/MemeVideos`.
-Wait a few seconds for the download and database setup to complete.
+Wait a few seconds for the download and database setup to complete. *(no need to wait until it is done, after a few seconds go to the next step)*
 
 ###  Step 2: Run the Web Server
 
